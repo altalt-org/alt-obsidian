@@ -136,7 +136,7 @@ export function buildSummaryPrompt(
 	const customPromptText = config.customPrompt?.trim();
 	const isCustomMode = !!customPromptText;
 
-	const base = isCustomMode ? buildCustomPrompts(sourceText, customPromptText!) : buildDefaultPrompts(sourceText);
+	const base = customPromptText ? buildCustomPrompts(sourceText, customPromptText) : buildDefaultPrompts(sourceText);
 
 	const userWithInstruction = isCustomMode
 		? base.user

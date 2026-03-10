@@ -30,7 +30,7 @@ function getElectronModule(): ElectronModule | null {
 function openMacPrivacy(pane: string): void {
 	const electron = getElectronModule();
 	const shell = electron?.shell ?? electron?.remote?.shell;
-	shell?.openExternal(`x-apple.systempreferences:com.apple.settings.PrivacySecurity.extension?${pane}`);
+	void shell?.openExternal(`x-apple.systempreferences:com.apple.settings.PrivacySecurity.extension?${pane}`);
 }
 
 export class AltNoteSettingTab extends PluginSettingTab {
@@ -45,7 +45,7 @@ export class AltNoteSettingTab extends PluginSettingTab {
 		const { containerEl } = this;
 		containerEl.empty();
 
-		containerEl.createEl('h2', { text: t('settings.heading') });
+		new Setting(containerEl).setName(t('settings.heading')).setHeading();
 
 		// --- Alt App Banner ---
 		const banner = containerEl.createDiv({ cls: 'alt-settings-banner' });
@@ -59,7 +59,7 @@ export class AltNoteSettingTab extends PluginSettingTab {
 		link.setAttr('target', '_blank');
 
 		// --- Connection ---
-		containerEl.createEl('h3', { text: t('settings.connection.heading') });
+		new Setting(containerEl).setName(t('settings.connection.heading')).setHeading();
 
 		const statusSetting = new Setting(containerEl)
 			.setName(t('settings.connection.name'))
@@ -75,7 +75,7 @@ export class AltNoteSettingTab extends PluginSettingTab {
 						throw new Error('Alt client not initialized.');
 					}
 					if (!this.plugin.settings.altServerToken) {
-						const discovered = await this.plugin.altClient.discoverToken();
+						const discovered = this.plugin.altClient.discoverToken();
 						if (discovered) {
 							this.plugin.settings.altServerToken = discovered;
 							await this.plugin.saveSettings();
@@ -94,7 +94,7 @@ export class AltNoteSettingTab extends PluginSettingTab {
 		});
 
 		// --- Permissions ---
-		containerEl.createEl('h3', { text: t('settings.permissions.heading') });
+		new Setting(containerEl).setName(t('settings.permissions.heading')).setHeading();
 
 		new Setting(containerEl)
 			.setName(t('settings.permissions.microphone'))
@@ -113,7 +113,7 @@ export class AltNoteSettingTab extends PluginSettingTab {
 			});
 
 		// --- General ---
-		containerEl.createEl('h3', { text: t('settings.general.heading') });
+		new Setting(containerEl).setName(t('settings.general.heading')).setHeading();
 
 		new Setting(containerEl)
 			.setName(t('settings.general.noteLanguage'))
@@ -142,7 +142,7 @@ export class AltNoteSettingTab extends PluginSettingTab {
 			});
 
 		// --- AI ---
-		containerEl.createEl('h3', { text: t('settings.ai.heading') });
+		new Setting(containerEl).setName(t('settings.ai.heading')).setHeading();
 
 		new Setting(containerEl)
 			.setName(t('settings.ai.autoTitle'))

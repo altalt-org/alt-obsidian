@@ -120,7 +120,7 @@ export class AltHttpClient {
 	 * Try to auto-discover the auth token from Alt's token file.
 	 * macOS: ~/Library/Application Support/Alt/http-server-token
 	 */
-	async discoverToken(): Promise<string | null> {
+	discoverToken(): string | null {
 		const platform = process.platform;
 		let tokenPath: string;
 
@@ -421,7 +421,9 @@ export class AltHttpClient {
 			for (const handler of handlers) {
 				try {
 					handler({ event, data });
-				} catch {}
+				} catch {
+					/* ignore handler errors so other SSE listeners still run */
+				}
 			}
 		}
 
@@ -431,7 +433,9 @@ export class AltHttpClient {
 			for (const handler of wildcardHandlers) {
 				try {
 					handler({ event, data });
-				} catch {}
+				} catch {
+					/* ignore handler errors so wildcard listeners still run */
+				}
 			}
 		}
 	}

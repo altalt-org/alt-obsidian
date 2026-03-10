@@ -29,8 +29,9 @@ export class AltSttEngine implements ISttEngine {
 		}
 	}
 
-	async disconnect(): Promise<void> {
+	disconnect(): Promise<void> {
 		this._available = false;
+		return Promise.resolve();
 	}
 
 	startSession(): ISttSession {
@@ -82,8 +83,9 @@ class AltSttSession implements ISttSession {
 		this.errorCb = cb;
 	}
 
-	async finalize(): Promise<void> {
+	finalize(): Promise<void> {
 		this.unsubSSE?.();
 		this.unsubSSE = null;
+		return Promise.resolve();
 	}
 }

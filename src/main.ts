@@ -52,7 +52,7 @@ export default class AltNotePlugin extends Plugin {
 		this.registerView(RECORDING_VIEW_TYPE, (leaf) => new RecordingView(leaf, this));
 
 		this.addRibbonIcon('mic', t('command.openRecordingPanel'), () => {
-			this.activateRecordingPanel();
+			void this.activateRecordingPanel();
 		});
 
 		this.registerCommands();
@@ -63,8 +63,8 @@ export default class AltNotePlugin extends Plugin {
 			clearTimeout(this.altRetryTimer);
 			this.altRetryTimer = null;
 		}
-		this.pipeline?.stop().catch(() => {});
-		this.sttEngine?.disconnect().catch(() => {});
+		void this.pipeline?.stop().catch(() => {});
+		void this.sttEngine?.disconnect().catch(() => {});
 		this.altClient?.disconnect();
 	}
 
@@ -86,7 +86,7 @@ export default class AltNotePlugin extends Plugin {
 		}
 
 		this.sttEngine = new AltSttEngine(this.altClient);
-		this.llmProvider = new AltLlmProvider(this.altClient);
+		this.llmProvider = new AltLlmProvider(this.altClient, this.app);
 	}
 
 	isAltServerMode(): boolean {
@@ -113,14 +113,14 @@ export default class AltNotePlugin extends Plugin {
 			return;
 		}
 
-		this.connectAltServer();
+		void this.connectAltServer();
 	}
 
 	private async connectAltServer(): Promise<void> {
 		if (!this.altClient) return;
 
 		if (!this.settings.altServerToken) {
-			const discovered = await this.altClient.discoverToken();
+			const discovered = this.altClient.discoverToken();
 			if (discovered) {
 				this.settings.altServerToken = discovered;
 				await this.saveData(this.settings);
@@ -211,7 +211,7 @@ export default class AltNotePlugin extends Plugin {
 			id: 'open-recording-panel',
 			name: t('command.openRecordingPanel'),
 			callback: () => {
-				this.activateRecordingPanel();
+				void this.activateRecordingPanel();
 			},
 		});
 
@@ -581,14 +581,14 @@ export default class AltNotePlugin extends Plugin {
 	async activateRecordingPanel(): Promise<void> {
 		const existing = this.app.workspace.getLeavesOfType(RECORDING_VIEW_TYPE);
 		if (existing.length > 0) {
-			this.app.workspace.revealLeaf(existing[0]);
+			void this.app.workspace.revealLeaf(existing[0]);
 			return;
 		}
 
 		const leaf = this.app.workspace.getRightLeaf(false);
 		if (leaf) {
 			await leaf.setViewState({ type: RECORDING_VIEW_TYPE, active: true });
-			this.app.workspace.revealLeaf(leaf);
+			void this.app.workspace.revealLeaf(leaf);
 		}
 	}
 

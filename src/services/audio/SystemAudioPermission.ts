@@ -40,6 +40,10 @@ type ElectronModule = {
 	};
 };
 
+type WindowWithRequire = Window & {
+	require?: (moduleName: string) => unknown;
+};
+
 type DesktopTrackConstraints = MediaTrackConstraints & {
 	mandatory: {
 		chromeMediaSource: 'desktop';
@@ -49,7 +53,7 @@ type DesktopTrackConstraints = MediaTrackConstraints & {
 
 function getElectron(): ElectronModule | null {
 	try {
-		const required = require('electron') as unknown;
+		const required = (window as WindowWithRequire).require?.('electron');
 		if (!required || typeof required !== 'object') {
 			return null;
 		}
@@ -99,13 +103,17 @@ export async function acquireSystemAudioStream(): Promise<MediaStream | null> {
 	if (hasHandler && capturer?.getSources && remote) {
 		try {
 			return await acquireViaDisplayMediaHandler(remote, capturer);
-		} catch {}
+		} catch {
+			/* display-media handler path can fail on older Electron builds */
+		}
 	}
 
 	if (capturer?.getSources) {
 		try {
 			return await acquireViaLegacyDesktopCapturer(capturer);
-		} catch {}
+		} catch {
+			/* legacy desktopCapturer path can fail when loopback audio is unavailable */
+		}
 	}
 
 	return fallbackGetDisplayMedia();
@@ -138,7 +146,9 @@ async function acquireViaDisplayMediaHandler(
 	} finally {
 		try {
 			remote.session.defaultSession.setDisplayMediaRequestHandler(null);
-		} catch {}
+		} catch {
+			/* handler cleanup is best-effort during permission teardown */
+		}
 	}
 }
 

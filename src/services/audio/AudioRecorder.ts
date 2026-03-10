@@ -1,7 +1,7 @@
 import type { RecordingState } from '../../types';
 import { acquireSystemAudioStream, getScreenCaptureStatus, openScreenCaptureSettings } from './SystemAudioPermission';
 
-/* global MediaStreamTrackProcessor, AudioData — Chrome/Electron 94+ non-standard */
+/* global MediaStreamTrackProcessor, AudioData -- These are non-standard Chromium APIs available in Electron 94+ used for zero-AudioContext audio capture */
 interface MSTrackProcessor {
 	readable: ReadableStream;
 }
@@ -140,7 +140,7 @@ export class AudioRecorder {
 		this.micReader = processor.readable.getReader();
 		this.micCaptureActive = true;
 
-		this.readMicFrames(trackRate);
+		void this.readMicFrames(trackRate);
 	}
 
 	private async readMicFrames(trackRate: number): Promise<void> {
@@ -183,7 +183,9 @@ export class AudioRecorder {
 		if (this.micReader) {
 			try {
 				await this.micReader.cancel();
-			} catch {}
+			} catch {
+				/* reader may already be closed during shutdown */
+			}
 			this.micReader = null;
 		}
 		this.pendingMicPcm = [];
@@ -202,7 +204,7 @@ export class AudioRecorder {
 		this.systemReader = processor.readable.getReader();
 		this.systemCaptureActive = true;
 
-		this.readSystemFrames(trackRate);
+		void this.readSystemFrames(trackRate);
 	}
 
 	private async readSystemFrames(trackRate: number): Promise<void> {
@@ -246,7 +248,9 @@ export class AudioRecorder {
 		if (this.systemReader) {
 			try {
 				await this.systemReader.cancel();
-			} catch {}
+			} catch {
+				/* reader may already be closed during shutdown */
+			}
 			this.systemReader = null;
 		}
 		this.pendingSystemPcm = [];
@@ -341,11 +345,13 @@ export class AudioRecorder {
 
 			try {
 				return await navigator.mediaDevices.getUserMedia({ audio: constraints });
-			} catch (e) {
+			} catch {
 				if (i === 0 && deviceId) {
 					try {
 						return await navigator.mediaDevices.getUserMedia({ audio: true });
-					} catch {}
+					} catch {
+						/* fallback to the default microphone when the selected one is unavailable */
+					}
 				}
 
 				const mic = await this.tryAcquireAnyMic();
@@ -362,7 +368,9 @@ export class AudioRecorder {
 	private async tryAcquireAnyMic(): Promise<MediaStream | null> {
 		try {
 			return await navigator.mediaDevices.getUserMedia({ audio: true });
-		} catch {}
+		} catch {
+			/* default microphone access can fail before permissions or device selection settle */
+		}
 
 		try {
 			const devices = await navigator.mediaDevices.enumerateDevices();
@@ -374,9 +382,13 @@ export class AudioRecorder {
 						audio: { deviceId: { exact: mic.deviceId } },
 					});
 					return stream;
-				} catch {}
+				} catch {
+					/* skip microphones that cannot be opened */
+				}
 			}
-		} catch {}
+		} catch {
+			/* device enumeration can fail before media permissions are granted */
+		}
 
 		return null;
 	}

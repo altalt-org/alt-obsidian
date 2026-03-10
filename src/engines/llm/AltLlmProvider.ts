@@ -1,3 +1,5 @@
+import * as https from 'https';
+import type { App } from 'obsidian';
 import type { AltHttpClient } from '../../infra/AltHttpClient';
 import type { ChatMessage, GenerateOpts, StreamCallbacks } from '../../types';
 import { ALL_MODELS } from '../../types';
@@ -6,16 +8,24 @@ import type { ILlmProvider } from './ILlmProvider';
 const LLM_URL = 'https://api.altalt.io/llm';
 const LLM_ANONYMOUS_URL = 'https://api.altalt.io/llm-anonymous';
 
+function createAbortError(): Error {
+	const error = new Error('The operation was aborted.');
+	error.name = 'AbortError';
+	return error;
+}
+
 export class AltLlmProvider implements ILlmProvider {
 	readonly name = 'alt-server';
 
+	private app: App;
 	private client: AltHttpClient;
 	private abortController: AbortController | null = null;
 	private _available = false;
 	private _accessToken: string | null = null;
 	private _machineId: string | null = null;
 
-	constructor(client: AltHttpClient) {
+	constructor(client: AltHttpClient, app: App) {
+		this.app = app;
 		this.client = client;
 	}
 
@@ -46,17 +56,17 @@ export class AltLlmProvider implements ILlmProvider {
 
 	private getOrCreateMachineId(): string {
 		try {
-			const stored = localStorage.getItem('alt-note-machine-id');
-			if (stored) return stored;
+			const stored = this.app.loadLocalStorage('alt-note-machine-id');
+			if (typeof stored === 'string' && stored) return stored;
 		} catch {
-			/* noop */
+			/* machine ID lookup can fail without blocking requests */
 		}
 
 		const id = crypto.randomUUID();
 		try {
-			localStorage.setItem('alt-note-machine-id', id);
+			this.app.saveLocalStorage('alt-note-machine-id', id);
 		} catch {
-			/* noop */
+			/* machine ID persistence failure is non-critical */
 		}
 		return id;
 	}
@@ -95,49 +105,132 @@ export class AltLlmProvider implements ILlmProvider {
 		this.abortController = new AbortController();
 
 		try {
-			const response = await fetch(endpoint, {
-				method: 'POST',
-				headers,
-				body: JSON.stringify(payload),
-				signal: this.abortController.signal,
-			});
-
-			if (!response.ok) {
-				if (response.status === 429) throw new Error('Rate limit exceeded.');
-				const errText = await response.text();
-				throw new Error(`API Error ${response.status}: ${errText}`);
-			}
-
-			if (!response.body) throw new Error('Response body is null');
-
-			const reader = response.body.getReader();
-			const decoder = new TextDecoder();
-			let buffer = '';
-			let isSSE = false;
-			let pendingEventType: string | null = null;
-			let fullText = '';
-			let chunkBuffer = '';
-			let lastFlush = Date.now();
-			const THROTTLE_MS = 100;
-
-			const flush = () => {
-				if (chunkBuffer) {
-					cb.onToken?.(chunkBuffer);
-					fullText += chunkBuffer;
-					chunkBuffer = '';
-					lastFlush = Date.now();
+			await new Promise<void>((resolve, reject) => {
+				const abortController = this.abortController;
+				if (!abortController) {
+					reject(createAbortError());
+					return;
 				}
-			};
 
-			try {
-				while (true) {
-					if (this.abortController.signal.aborted) {
-						reader.releaseLock();
+				const signal = abortController.signal;
+				let buffer = '';
+				let isSSE = false;
+				let pendingEventType: string | null = null;
+				let fullText = '';
+				let chunkBuffer = '';
+				let lastFlush = Date.now();
+				const THROTTLE_MS = 100;
+				let settled = false;
+
+				const flush = () => {
+					if (chunkBuffer) {
+						cb.onToken?.(chunkBuffer);
+						fullText += chunkBuffer;
+						chunkBuffer = '';
+						lastFlush = Date.now();
+					}
+				};
+
+				const finish = (error?: Error) => {
+					if (settled) return;
+					settled = true;
+					signal.removeEventListener('abort', onAbort);
+					if (error) {
+						reject(error);
+						return;
+					}
+					resolve();
+				};
+
+				const processSseLines = (lines: string[]): boolean => {
+					for (const line of lines) {
+						if (line.startsWith('event: ')) {
+							pendingEventType = line.replace(/^event: /, '').trim();
+							continue;
+						}
+						if (line.startsWith('data: ')) {
+							const jsonStr = line.replace(/^data: /, '').trim();
+							if (jsonStr === '[DONE]') {
+								flush();
+								cb.onDone?.(fullText);
+								finish();
+								return true;
+							}
+							try {
+								const parsed = JSON.parse(jsonStr);
+								if (pendingEventType === 'error' && parsed.error) {
+									cb.onError?.(new Error(parsed.error));
+									pendingEventType = null;
+									continue;
+								}
+								const text = parsed.text || parsed.content || '';
+								if (text) {
+									chunkBuffer += text;
+									if (Date.now() - lastFlush > THROTTLE_MS) flush();
+								}
+								pendingEventType = null;
+							} catch {
+								if (jsonStr && jsonStr !== '[DONE]') {
+									chunkBuffer += jsonStr;
+									if (Date.now() - lastFlush > THROTTLE_MS) flush();
+								}
+								pendingEventType = null;
+							}
+						}
+					}
+
+					return false;
+				};
+
+				const onAbort = () => {
+					req.destroy(createAbortError());
+				};
+
+				const req = https.request(endpoint, { method: 'POST', headers }, (res) => {
+					const statusCode = res.statusCode ?? 0;
+
+					if (statusCode < 200 || statusCode >= 300) {
+						let errText = '';
+						res.setEncoding('utf8');
+						res.on('data', (chunk: string) => {
+							errText += chunk;
+						});
+						res.on('end', () => {
+							if (settled) return;
+							if (statusCode === 429) {
+								finish(new Error('Rate limit exceeded.'));
+								return;
+							}
+							finish(new Error(`API Error ${statusCode}: ${errText}`));
+						});
+						res.on('error', (error) => {
+							finish(error instanceof Error ? error : new Error(String(error)));
+						});
 						return;
 					}
 
-					const { done, value } = await reader.read();
-					if (done) {
+					res.setEncoding('utf8');
+					res.on('data', (chunk: string) => {
+						if (settled || signal.aborted) return;
+						buffer += chunk;
+
+						if (!isSSE && (buffer.includes('data: ') || buffer.includes('event: '))) {
+							isSSE = true;
+						}
+
+						if (isSSE) {
+							const lines = buffer.split('\n');
+							buffer = lines.pop() || '';
+							processSseLines(lines);
+						} else {
+							chunkBuffer += chunk;
+							if (Date.now() - lastFlush > THROTTLE_MS) flush();
+							buffer = '';
+						}
+					});
+
+					res.on('end', () => {
+						if (settled) return;
 						if (buffer.trim() && isSSE) {
 							for (const line of buffer.split('\n')) {
 								if (line.startsWith('data: ')) {
@@ -148,7 +241,7 @@ export class AltLlmProvider implements ILlmProvider {
 											const text = parsed.text || parsed.content || '';
 											if (text) chunkBuffer += text;
 										} catch {
-											/* non-JSON */
+											/* ignore malformed trailing SSE payloads */
 										}
 									}
 								}
@@ -156,65 +249,25 @@ export class AltLlmProvider implements ILlmProvider {
 						} else if (buffer.trim()) {
 							chunkBuffer += buffer;
 						}
+
 						flush();
 						cb.onDone?.(fullText);
-						break;
-					}
+						finish();
+					});
 
-					const chunk = decoder.decode(value, { stream: true });
-					buffer += chunk;
+					res.on('error', (error) => {
+						finish(error instanceof Error ? error : new Error(String(error)));
+					});
+				});
 
-					if (!isSSE && (buffer.includes('data: ') || buffer.includes('event: '))) {
-						isSSE = true;
-					}
+				req.on('error', (error) => {
+					finish(error instanceof Error ? error : new Error(String(error)));
+				});
 
-					if (isSSE) {
-						const lines = buffer.split('\n');
-						buffer = lines.pop() || '';
-
-						for (const line of lines) {
-							if (line.startsWith('event: ')) {
-								pendingEventType = line.replace(/^event: /, '').trim();
-								continue;
-							}
-							if (line.startsWith('data: ')) {
-								const jsonStr = line.replace(/^data: /, '').trim();
-								if (jsonStr === '[DONE]') {
-									flush();
-									cb.onDone?.(fullText);
-									return;
-								}
-								try {
-									const parsed = JSON.parse(jsonStr);
-									if (pendingEventType === 'error' && parsed.error) {
-										cb.onError?.(new Error(parsed.error));
-										pendingEventType = null;
-										continue;
-									}
-									const text = parsed.text || parsed.content || '';
-									if (text) {
-										chunkBuffer += text;
-										if (Date.now() - lastFlush > THROTTLE_MS) flush();
-									}
-									pendingEventType = null;
-								} catch {
-									if (jsonStr && jsonStr !== '[DONE]') {
-										chunkBuffer += jsonStr;
-										if (Date.now() - lastFlush > THROTTLE_MS) flush();
-									}
-									pendingEventType = null;
-								}
-							}
-						}
-					} else {
-						chunkBuffer += chunk;
-						if (Date.now() - lastFlush > THROTTLE_MS) flush();
-						buffer = '';
-					}
-				}
-			} finally {
-				reader.releaseLock();
-			}
+				signal.addEventListener('abort', onAbort, { once: true });
+				req.write(JSON.stringify(payload));
+				req.end();
+			});
 		} catch (e) {
 			if (e instanceof Error && (e.name === 'AbortError' || this.abortController?.signal.aborted)) return;
 			cb.onError?.(e instanceof Error ? e : new Error(String(e)));
@@ -226,7 +279,7 @@ export class AltLlmProvider implements ILlmProvider {
 	async generate(messages: ChatMessage[], opts: GenerateOpts): Promise<string> {
 		return new Promise<string>((resolve, reject) => {
 			let result = '';
-			this.streamChat(messages, opts, {
+			void this.streamChat(messages, opts, {
 				onToken: (token) => {
 					result += token;
 				},

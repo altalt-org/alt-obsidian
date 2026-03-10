@@ -127,7 +127,7 @@ export class RecordingView extends ItemView {
 		await this.loadMicrophones();
 
 		if (this.plugin.pipeline && this.plugin.pipeline.getState() !== 'idle') {
-			this.updateUI(this.plugin.pipeline.getState() as RecordingState);
+			this.updateUI(this.plugin.pipeline.getState());
 		}
 	}
 
@@ -366,9 +366,9 @@ export class RecordingView extends ItemView {
 			const opt = this.transcriptionLangSelect.createEl('option', { value: lang.code, text: lang.name });
 			if (lang.code === this.plugin.settings.defaultTranscriptionLanguage) opt.selected = true;
 		}
-		this.transcriptionLangSelect.addEventListener('change', async () => {
+		this.transcriptionLangSelect.addEventListener('change', () => {
 			this.plugin.settings.defaultTranscriptionLanguage = this.transcriptionLangSelect.value;
-			await this.plugin.saveSettings();
+			void this.plugin.saveSettings();
 		});
 
 		const micWrap = primaryGroup.createDiv({ cls: 'alt-select-wrap' });
@@ -376,9 +376,9 @@ export class RecordingView extends ItemView {
 		setIcon(micIcon, 'mic');
 		this.microphoneSelect = micWrap.createEl('select', { cls: 'alt-pill-select' });
 		this.microphoneSelect.title = t('recording.microphone');
-		this.microphoneSelect.addEventListener('change', async () => {
+		this.microphoneSelect.addEventListener('change', () => {
 			this.plugin.settings.selectedMicrophoneId = this.microphoneSelect.value;
-			await this.plugin.saveSettings();
+			void this.plugin.saveSettings();
 		});
 
 		const secondaryGroup = controls.createDiv({ cls: 'alt-toolbar-secondary' });
@@ -388,10 +388,10 @@ export class RecordingView extends ItemView {
 		setIcon(this.systemAudioBtn, 'monitor-speaker');
 		this.systemAudioBtn.createSpan({ text: t('recording.systemAudio') });
 		this.systemAudioBtn.toggleClass('alt-chip-active', this.plugin.settings.includeSystemAudio);
-		this.systemAudioBtn.addEventListener('click', async () => {
+		this.systemAudioBtn.addEventListener('click', () => {
 			this.plugin.settings.includeSystemAudio = !this.plugin.settings.includeSystemAudio;
 			this.systemAudioBtn.toggleClass('alt-chip-active', this.plugin.settings.includeSystemAudio);
-			await this.plugin.saveSettings();
+			void this.plugin.saveSettings();
 		});
 
 		const translateWrap = secondaryGroup.createDiv({ cls: 'alt-control-slot' });
@@ -404,10 +404,10 @@ export class RecordingView extends ItemView {
 			const opt = this.translateLangSelect.createEl('option', { value: lang.code, text: lang.name });
 			if (lang.code === this.plugin.settings.transcriptTranslateTargetLanguage) opt.selected = true;
 		}
-		this.translateLangSelect.style.display = this.plugin.settings.transcriptTranslateEnabled ? '' : 'none';
-		this.translateLangSelect.addEventListener('change', async () => {
+		this.setHidden(this.translateLangSelect, !this.plugin.settings.transcriptTranslateEnabled);
+		this.translateLangSelect.addEventListener('change', () => {
 			this.plugin.settings.transcriptTranslateTargetLanguage = this.translateLangSelect.value;
-			await this.plugin.saveSettings();
+			void this.plugin.saveSettings();
 			this.updateTranslateChip();
 		});
 
@@ -421,16 +421,16 @@ export class RecordingView extends ItemView {
 				'';
 			translateLabel.setText(enabled ? `Translate → ${langName}` : 'Translate');
 			this.translateChipBtn.toggleClass('alt-chip-active', enabled);
-			this.translateLangSelect.style.display = enabled ? '' : 'none';
+			this.setHidden(this.translateLangSelect, !enabled);
 			this.updateTranscriptToolbarLayout();
 		};
 		this.updateTranslateChip = updateTranslateLabel;
 		updateTranslateLabel();
 
-		this.translateChipBtn.addEventListener('click', async () => {
+		this.translateChipBtn.addEventListener('click', () => {
 			this.plugin.settings.transcriptTranslateEnabled = !this.plugin.settings.transcriptTranslateEnabled;
 			this.translateToggle.checked = this.plugin.settings.transcriptTranslateEnabled;
-			await this.plugin.saveSettings();
+			void this.plugin.saveSettings();
 			updateTranslateLabel();
 		});
 
@@ -477,9 +477,9 @@ export class RecordingView extends ItemView {
 		this.summaryModelSelect = modelWrap.createEl('select', { cls: 'alt-pill-select' });
 		this.populateModelOptions(this.summaryModelSelect);
 		this.summaryModelSelect.value = this.plugin.settings.llmCloudModel;
-		this.summaryModelSelect.addEventListener('change', async () => {
+		this.summaryModelSelect.addEventListener('change', () => {
 			this.plugin.settings.llmCloudModel = this.summaryModelSelect.value;
-			await this.plugin.saveSettings();
+			void this.plugin.saveSettings();
 		});
 
 		const langWrap = bottom.createDiv({ cls: 'alt-select-wrap alt-lang-wrap' });
@@ -491,9 +491,9 @@ export class RecordingView extends ItemView {
 			const opt = this.summaryLangSelect.createEl('option', { value: lang.code, text: lang.name });
 			if (lang.code === this.plugin.settings.summaryGenerateLanguage) opt.selected = true;
 		}
-		this.summaryLangSelect.addEventListener('change', async () => {
+		this.summaryLangSelect.addEventListener('change', () => {
 			this.plugin.settings.summaryGenerateLanguage = this.summaryLangSelect.value;
-			await this.plugin.saveSettings();
+			void this.plugin.saveSettings();
 		});
 	}
 
@@ -533,7 +533,7 @@ export class RecordingView extends ItemView {
 			this.handleStopChat();
 		});
 		this.chatStopBtn.title = t('chat.stop');
-		this.chatStopBtn.style.display = 'none';
+		this.chatStopBtn.addClass('alt-hidden');
 	}
 
 	private switchTab(tab: TabId): void {
@@ -542,7 +542,7 @@ export class RecordingView extends ItemView {
 			btn.toggleClass('alt-tab-active', id === tab);
 		}
 		for (const [id, panel] of this.tabPanels) {
-			panel.style.display = id === tab ? '' : 'none';
+			panel.toggleClass('alt-hidden', id !== tab);
 		}
 		this.updateTopActions();
 		if (tab === 'summary') void this.refreshSummaryContent();
@@ -555,11 +555,11 @@ export class RecordingView extends ItemView {
 		const summary = this.activeTab === 'summary';
 		const chat = this.activeTab === 'chat';
 
-		this.topDeleteBtn.style.display = transcript ? '' : 'none';
-		this.topShareBtn.style.display = transcript || summary ? '' : 'none';
-		this.topCopyBtn.style.display = transcript || summary ? '' : 'none';
-		this.topHistoryBtn.style.display = chat ? '' : 'none';
-		this.topNewBtn.style.display = chat ? '' : 'none';
+		this.setHidden(this.topDeleteBtn, !transcript);
+		this.setHidden(this.topShareBtn, !(transcript || summary));
+		this.setHidden(this.topCopyBtn, !(transcript || summary));
+		this.setHidden(this.topHistoryBtn, !chat);
+		this.setHidden(this.topNewBtn, !chat);
 	}
 
 	private populateModelOptions(select: HTMLSelectElement): void {
@@ -595,6 +595,10 @@ export class RecordingView extends ItemView {
 		return btn;
 	}
 
+	private setHidden(el: HTMLElement, hidden: boolean): void {
+		el.toggleClass('alt-hidden', hidden);
+	}
+
 	private addDivider(parent: HTMLElement, transparent = false): void {
 		parent.createDiv({ cls: transparent ? 'alt-divider alt-divider-transparent' : 'alt-divider' });
 	}
@@ -622,10 +626,10 @@ export class RecordingView extends ItemView {
 		menu.addItem((item) => {
 			item.setTitle(`System Audio: ${this.plugin.settings.includeSystemAudio ? 'ON' : 'OFF'}`);
 			item.setIcon('monitor-speaker');
-			item.onClick(async () => {
+			item.onClick(() => {
 				this.plugin.settings.includeSystemAudio = !this.plugin.settings.includeSystemAudio;
 				this.systemAudioBtn.toggleClass('alt-chip-active', this.plugin.settings.includeSystemAudio);
-				await this.plugin.saveSettings();
+				void this.plugin.saveSettings();
 			});
 		});
 
@@ -635,10 +639,10 @@ export class RecordingView extends ItemView {
 			const enabled = this.plugin.settings.transcriptTranslateEnabled;
 			item.setTitle(enabled ? 'Translate: ON' : 'Translate: OFF');
 			item.setIcon('languages');
-			item.onClick(async () => {
+			item.onClick(() => {
 				this.plugin.settings.transcriptTranslateEnabled = !this.plugin.settings.transcriptTranslateEnabled;
 				this.translateToggle.checked = this.plugin.settings.transcriptTranslateEnabled;
-				await this.plugin.saveSettings();
+				void this.plugin.saveSettings();
 				this.updateTranslateChip();
 			});
 		});
@@ -648,10 +652,10 @@ export class RecordingView extends ItemView {
 				menu.addItem((item) => {
 					const isCurrent = lang.code === this.plugin.settings.transcriptTranslateTargetLanguage;
 					item.setTitle(`  ${lang.name}${isCurrent ? ' ✓' : ''}`);
-					item.onClick(async () => {
+					item.onClick(() => {
 						this.plugin.settings.transcriptTranslateTargetLanguage = lang.code;
 						this.translateLangSelect.value = lang.code;
-						await this.plugin.saveSettings();
+						void this.plugin.saveSettings();
 						this.updateTranslateChip();
 					});
 				});
@@ -672,7 +676,9 @@ export class RecordingView extends ItemView {
 			try {
 				const permStream = await navigator.mediaDevices.getUserMedia({ audio: true });
 				for (const tr of permStream.getTracks()) tr.stop();
-			} catch {}
+			} catch {
+				/* microphone permission probe can fail before the user grants access */
+			}
 			const devices = await navigator.mediaDevices.enumerateDevices();
 			const audioInputs = devices.filter((d) => d.kind === 'audioinput');
 			let idx = 1;
@@ -685,7 +691,7 @@ export class RecordingView extends ItemView {
 			if (this.plugin.settings.selectedMicrophoneId) {
 				this.microphoneSelect.value = this.plugin.settings.selectedMicrophoneId;
 			}
-		} catch (e) {
+		} catch {
 			this.microphoneSelect.value = '';
 		}
 
@@ -978,8 +984,8 @@ export class RecordingView extends ItemView {
 		this.renderChat();
 
 		this.chatStreaming = true;
-		this.chatSendBtn.style.display = 'none';
-		this.chatStopBtn.style.display = '';
+		this.setHidden(this.chatSendBtn, true);
+		this.setHidden(this.chatStopBtn, false);
 
 		try {
 			await this.plugin.ensureLlmAvailable();
@@ -1025,16 +1031,16 @@ export class RecordingView extends ItemView {
 			new Notice(`${t('error.llmFailed')}: ${e instanceof Error ? e.message : String(e)}`);
 		} finally {
 			this.chatStreaming = false;
-			this.chatSendBtn.style.display = '';
-			this.chatStopBtn.style.display = 'none';
+			this.setHidden(this.chatSendBtn, false);
+			this.setHidden(this.chatStopBtn, true);
 		}
 	}
 
 	private handleStopChat(): void {
 		this.plugin.llmProvider.abort();
 		this.chatStreaming = false;
-		this.chatSendBtn.style.display = '';
-		this.chatStopBtn.style.display = 'none';
+		this.setHidden(this.chatSendBtn, false);
+		this.setHidden(this.chatStopBtn, true);
 	}
 
 	private renderChat(): void {

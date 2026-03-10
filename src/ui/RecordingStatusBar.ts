@@ -23,12 +23,12 @@ export class RecordingStatusBar {
 	}
 
 	show(): void {
-		this.el.style.display = '';
+		this.el.removeClass('alt-hidden');
 		this.visible = true;
 	}
 
 	hide(): void {
-		this.el.style.display = 'none';
+		this.el.addClass('alt-hidden');
 		this.visible = false;
 	}
 
