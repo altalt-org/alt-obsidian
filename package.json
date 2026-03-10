@@ -1,0 +1,32 @@
+{
+	"name": "alt-obsidian",
+	"version": "0.1.0",
+	"description": "Free unlimited transcription and AI note-taking for Obsidian",
+	"main": "main.js",
+	"scripts": {
+		"dev": "node esbuild.config.mjs",
+		"build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
+		"version": "node version-bump.mjs && git add manifest.json versions.json",
+		"lint": "biome lint ./src",
+		"format": "biome format --write ./src",
+		"check": "biome check ./src"
+	},
+	"keywords": [
+		"obsidian",
+		"plugin",
+		"ai",
+		"transcription",
+		"lecture",
+		"meeting",
+		"notes"
+	],
+	"license": "MIT",
+	"devDependencies": {
+		"@biomejs/biome": "^2.4.6",
+		"@types/node": "^22.0.0",
+		"builtin-modules": "^4.0.0",
+		"esbuild": "^0.24.0",
+		"obsidian": "latest",
+		"typescript": "^5.6.0"
+	}
+}
