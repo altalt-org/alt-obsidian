@@ -186,7 +186,7 @@ export default class AltNotePlugin extends Plugin {
 		new Notice(`${t('recording.status.idle')} — Connecting to STT server...`);
 		try {
 			await this.sttEngine.connect();
-			new Notice('STT server connected.');
+			new Notice('Alt server connected.');
 		} catch (e) {
 			throw new Error(`STT server unavailable: ${e instanceof Error ? e.message : String(e)}`);
 		}
@@ -198,7 +198,7 @@ export default class AltNotePlugin extends Plugin {
 		await this.ensureAltConnected();
 		await (this.llmProvider as AltLlmProvider).checkAvailability();
 		if (!this.llmProvider.available) {
-			new Notice('Alt server LLM unavailable. Check Alt app is running.');
+			new Notice('Alt server LLM unavailable. Check alt app is running.');
 		}
 
 		if (!this.llmProvider.available) {

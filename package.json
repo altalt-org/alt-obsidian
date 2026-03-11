@@ -1,6 +1,6 @@
 {
 	"name": "alt-obsidian",
-	"version": "0.1.1",
+	"version": "0.1.2",
 	"description": "Free unlimited transcription and AI note-taking for Obsidian",
 	"main": "main.js",
 	"scripts": {
@@ -24,8 +24,11 @@
 	"devDependencies": {
 		"@biomejs/biome": "^2.4.6",
 		"@types/node": "^22.0.0",
+		"@typescript-eslint/parser": "^8.57.0",
 		"builtin-modules": "^4.0.0",
 		"esbuild": "^0.24.0",
+		"eslint": "^9.39.4",
+		"eslint-plugin-obsidianmd": "github:obsidianmd/eslint-plugin",
 		"obsidian": "latest",
 		"typescript": "^5.6.0"
 	}
