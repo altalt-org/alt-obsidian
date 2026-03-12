@@ -146,18 +146,20 @@ export default class AltNotePlugin extends Plugin {
 		const delay = Math.min(5000 * 2 ** this.altRetryCount, 60_000);
 		this.altRetryCount++;
 
-		this.altRetryTimer = setTimeout(async () => {
-			this.altRetryTimer = null;
-			if (!this.altClient || !this.settings.altServerEnabled) return;
+		this.altRetryTimer = setTimeout(() => {
+			void (async () => {
+				this.altRetryTimer = null;
+				if (!this.altClient || !this.settings.altServerEnabled) return;
 
-			try {
-				await this.altClient.connect();
-				this.altClient.startSSE();
-				this.altRetryCount = 0;
-				this.reinitializeEngines();
-			} catch {
-				this.scheduleAltRetry();
-			}
+				try {
+					await this.altClient.connect();
+					this.altClient.startSSE();
+					this.altRetryCount = 0;
+					this.reinitializeEngines();
+				} catch {
+					this.scheduleAltRetry();
+				}
+			})();
 		}, delay);
 	}
 

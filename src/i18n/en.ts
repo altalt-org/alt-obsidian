@@ -101,11 +101,11 @@ export const en = {
 	'recording.microphoneDefault': 'System default',
 	'recording.systemAudio': 'System audio',
 	'recording.systemAudioDenied':
-		'Screen recording permission is denied. Please enable it in System Settings, then restart Obsidian.',
+		'Screen recording permission is denied. Please enable it in system settings, then restart Obsidian.',
 	'recording.systemAudioPermissionNeeded':
 		'Screen recording permission is needed. A system prompt will appear when recording starts.',
 	'recording.keywords': 'Keywords',
-	'recording.keywordsPlaceholder': 'e.g. product names, people, terms',
+	'recording.keywordsPlaceholder': 'Product names, people, terms',
 	'recording.translate': 'Translate',
 	'recording.noReplay': 'No recording available to replay',
 	'recording.stopBeforeDelete': 'Stop recording before deleting transcript',
