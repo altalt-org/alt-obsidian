@@ -291,6 +291,27 @@ export class AltHttpClient {
 	}
 
 	// --------------------------------------------------------------------------
+	// Models API
+	// --------------------------------------------------------------------------
+
+	async fetchModels(): Promise<import('../types').ModelCatalog | null> {
+		try {
+			const data = await this.request<import('../types').ModelCatalog>('GET', '/api/models');
+			if (
+				data &&
+				Array.isArray(data.general) &&
+				Array.isArray(data.extraAI) &&
+				Array.isArray(data.meetingNotes)
+			) {
+				return data;
+			}
+			return null;
+		} catch {
+			return null;
+		}
+	}
+
+	// --------------------------------------------------------------------------
 	// SSE Event Stream
 	// --------------------------------------------------------------------------
 

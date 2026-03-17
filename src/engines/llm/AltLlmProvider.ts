@@ -2,7 +2,7 @@ import * as https from 'https';
 import type { App } from 'obsidian';
 import type { AltHttpClient } from '../../infra/AltHttpClient';
 import type { ChatMessage, GenerateOpts, StreamCallbacks } from '../../types';
-import { ALL_MODELS } from '../../types';
+import { getAllModels } from '../../services/ModelStore';
 import type { ILlmProvider } from './ILlmProvider';
 
 const LLM_URL = 'https://api.altalt.io/llm';
@@ -73,7 +73,7 @@ export class AltLlmProvider implements ILlmProvider {
 
 	async streamChat(messages: ChatMessage[], opts: GenerateOpts, cb: StreamCallbacks): Promise<void> {
 		const modelId = opts.model || 'openai/gpt-oss-20b';
-		const modelDef = ALL_MODELS.find((m) => m.id === modelId);
+		const modelDef = getAllModels().find((m) => m.id === modelId);
 
 		const isLoggedIn = !!this._accessToken;
 		let endpoint: string;

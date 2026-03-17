@@ -4,7 +4,7 @@ import { TRANSCRIPTION_LANGUAGES, TRANSLATION_LANGUAGES } from '../constants/lan
 import { t } from '../i18n';
 import type AltNotePlugin from '../main';
 import type { ChatMessage, RecordingState, TranscriptionSegment } from '../types';
-import { GENERAL_MODELS } from '../types';
+import { getGeneralModels } from '../services/ModelStore';
 
 export const RECORDING_VIEW_TYPE = 'alt-note-recording';
 
@@ -563,7 +563,7 @@ export class RecordingView extends ItemView {
 	}
 
 	private populateModelOptions(select: HTMLSelectElement): void {
-		for (const model of GENERAL_MODELS) {
+		for (const model of getGeneralModels()) {
 			if (model.tier === 'local') continue;
 			const label = model.tier === 'pro' ? `${model.name} · Pro` : model.name;
 			select.createEl('option', { value: model.id, text: label });

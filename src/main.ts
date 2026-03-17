@@ -5,6 +5,7 @@ import { AltSttEngine } from './engines/stt/AltSttEngine';
 import type { ISttEngine } from './engines/stt/ISttEngine';
 import { setLocale, t } from './i18n';
 import { AltHttpClient } from './infra/AltHttpClient';
+import { updateModels } from './services/ModelStore';
 
 import { buildTitlePrompt, TITLE_MAX_LENGTH } from './prompts/title';
 import { MarkdownExportService } from './services/export/MarkdownExportService';
@@ -131,8 +132,17 @@ export default class AltNotePlugin extends Plugin {
 			await this.altClient.connect();
 			this.altClient.startSSE();
 			this.altRetryCount = 0;
+			void this.refreshModels();
 		} catch {
 			this.scheduleAltRetry();
+		}
+	}
+
+	private async refreshModels(): Promise<void> {
+		if (!this.altClient) return;
+		const catalog = await this.altClient.fetchModels();
+		if (catalog) {
+			updateModels(catalog);
 		}
 	}
 
@@ -155,6 +165,7 @@ export default class AltNotePlugin extends Plugin {
 					await this.altClient.connect();
 					this.altClient.startSSE();
 					this.altRetryCount = 0;
+					void this.refreshModels();
 					this.reinitializeEngines();
 				} catch {
 					this.scheduleAltRetry();
