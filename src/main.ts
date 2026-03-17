@@ -140,9 +140,14 @@ export default class AltNotePlugin extends Plugin {
 
 	private async refreshModels(): Promise<void> {
 		if (!this.altClient) return;
-		const catalog = await this.altClient.fetchModels();
-		if (catalog) {
-			updateModels(catalog);
+		try {
+			const catalog = await this.altClient.fetchModels();
+			if (catalog) {
+				updateModels(catalog);
+				this.getRecordingView()?.refreshModelDropdown();
+			}
+		} catch {
+			// Malformed catalog — keep fallback
 		}
 	}
 

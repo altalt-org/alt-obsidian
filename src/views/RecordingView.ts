@@ -562,6 +562,18 @@ export class RecordingView extends ItemView {
 		this.setHidden(this.topNewBtn, !chat);
 	}
 
+	refreshModelDropdown(): void {
+		this.repopulateSelect(this.summaryModelSelect, this.plugin.settings.llmCloudModel);
+		this.repopulateSelect(this.chatModelSelect, this.plugin.settings.llmCloudModel);
+	}
+
+	private repopulateSelect(select: HTMLSelectElement, selectedValue: string): void {
+		if (!select) return;
+		select.empty();
+		this.populateModelOptions(select);
+		select.value = selectedValue;
+	}
+
 	private populateModelOptions(select: HTMLSelectElement): void {
 		for (const model of getGeneralModels()) {
 			if (model.tier === 'local') continue;
