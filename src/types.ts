@@ -2,7 +2,7 @@
 // LLM Provider Types (from Alt desktop — src/shared/types/llm.ts)
 // ============================================================================
 
-export type LLMProviderType = 'openai' | 'anthropic' | 'google' | 'groq' | 'xai' | 'local';
+export type LLMProviderType = 'openai' | 'anthropic' | 'google' | 'groq' | 'xai' | 'vertex' | 'local';
 
 export type LLMPurpose = 'note_title' | 'transcript_summary' | 'chat' | 'translate' | 'typo_correct';
 
@@ -12,6 +12,12 @@ export interface ModelDefinition {
 	provider: LLMProviderType;
 	tier: 'free' | 'pro' | 'local';
 	description?: string;
+}
+
+export interface ModelCatalog {
+	general: ModelDefinition[];
+	extraAI: ModelDefinition[];
+	meetingNotes: ModelDefinition[];
 }
 
 // ============================================================================
@@ -24,49 +30,49 @@ export const GENERAL_MODELS: ModelDefinition[] = [
 		name: 'Auto',
 		provider: 'groq',
 		tier: 'free',
-		description: 'Extremely fast',
+		description: 'Extreamly fast',
 	},
 	{
 		id: 'gpt-5-nano',
 		name: 'GPT-5 Nano',
 		provider: 'openai',
 		tier: 'free',
-		description: 'Smart but slow',
+		description: 'Smart But Slow',
 	},
 	{
 		id: 'openai/gpt-oss-120b',
 		name: 'Auto Max',
 		provider: 'groq',
 		tier: 'pro',
-		description: 'Fast & smart',
+		description: 'Fast & Smart',
 	},
 	{
-		id: 'gpt-5.1-chat-latest',
-		name: 'GPT-5.1 Instant',
+		id: 'gpt-5.2-chat-latest',
+		name: 'GPT-5.2 Instant',
 		provider: 'openai',
 		tier: 'pro',
 		description: 'Balanced',
 	},
 	{
-		id: 'gpt-5.1',
-		name: 'GPT-5.1 Thinking',
+		id: 'gpt-5.2',
+		name: 'GPT-5.2 Thinking',
 		provider: 'openai',
 		tier: 'pro',
-		description: 'Maximum intelligence',
+		description: 'Maximum Intelligence',
 	},
 	{
-		id: 'gemini-3-pro-preview',
-		name: 'Gemini 3 Pro Preview',
-		provider: 'google',
+		id: 'gemini-3.1-pro-preview',
+		name: 'Gemini 3.1 Pro Preview',
+		provider: 'vertex',
 		tier: 'pro',
-		description: 'Maximum intelligence',
+		description: 'Maximum Intelligence',
 	},
 	{
 		id: 'gemma-3n-E2B-it-Q8_0-gguf',
 		name: 'Gemma Local',
 		provider: 'local',
 		tier: 'local',
-		description: 'Private & offline',
+		description: 'Private & Offline',
 	},
 ];
 
@@ -76,14 +82,14 @@ export const EXTRA_AI_MODELS: ModelDefinition[] = [
 		name: 'Auto',
 		provider: 'groq',
 		tier: 'free',
-		description: 'Extremely fast',
+		description: 'Extreamly fast',
 	},
 	{
 		id: 'gemma-3n-E2B-it-Q8_0-gguf',
 		name: 'Gemma Local',
 		provider: 'local',
 		tier: 'local',
-		description: 'Private & offline',
+		description: 'Private & Offline',
 	},
 ];
 
@@ -120,10 +126,30 @@ export const MEETING_NOTES_MODELS: ModelDefinition[] = [
 	},
 ];
 
+export const FALLBACK_MODEL_CATALOG: ModelCatalog = {
+	general: GENERAL_MODELS,
+	extraAI: EXTRA_AI_MODELS,
+	meetingNotes: MEETING_NOTES_MODELS,
+};
+
+export function buildAllModels(modelCatalog: ModelCatalog): ModelDefinition[] {
+	return Array.from(
+		new Map(
+			[...modelCatalog.general, ...modelCatalog.extraAI, ...modelCatalog.meetingNotes].map((model) => [model.id, model]),
+		).values(),
+	);
+}
+
+export function cloneModelCatalog(modelCatalog: ModelCatalog): ModelCatalog {
+	return {
+		general: modelCatalog.general.map((model) => ({ ...model })),
+		extraAI: modelCatalog.extraAI.map((model) => ({ ...model })),
+		meetingNotes: modelCatalog.meetingNotes.map((model) => ({ ...model })),
+	};
+}
+
 /** All models combined, deduplicated by ID */
-export const ALL_MODELS: ModelDefinition[] = Array.from(
-	new Map([...GENERAL_MODELS, ...EXTRA_AI_MODELS, ...MEETING_NOTES_MODELS].map((m) => [m.id, m])).values(),
-);
+export const ALL_MODELS: ModelDefinition[] = buildAllModels(FALLBACK_MODEL_CATALOG);
 
 export const DEFAULT_MODEL = GENERAL_MODELS[0];
 export const DEFAULT_EXTRA_AI_MODEL = EXTRA_AI_MODELS[0];
