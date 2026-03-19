@@ -216,7 +216,7 @@ export default class AltNotePlugin extends Plugin {
 		await this.ensureAltConnected();
 		await (this.llmProvider as AltLlmProvider).checkAvailability();
 		if (!this.llmProvider.available) {
-			new Notice('Alt server LLM unavailable. Check alt app is running.');
+			new Notice('Alt server LLM unavailable. Check Alt app is running.');
 		}
 
 		if (!this.llmProvider.available) {
@@ -236,21 +236,23 @@ export default class AltNotePlugin extends Plugin {
 		this.addCommand({
 			id: 'start-recording',
 			name: t('command.startRecording'),
-			callback: async () => {
-				try {
-					await this.ensureSttConnected();
-					await this.startRecording();
-				} catch (e) {
-					this.showError(e instanceof Error ? e.message : String(e));
-				}
+			callback: () => {
+				void (async () => {
+					try {
+						await this.ensureSttConnected();
+						await this.startRecording();
+					} catch (e) {
+						this.showError(e instanceof Error ? e.message : String(e));
+					}
+				})();
 			},
 		});
 
 		this.addCommand({
 			id: 'stop-recording',
 			name: t('command.stopRecording'),
-			callback: async () => {
-				await this.stopRecording();
+			callback: () => {
+				void this.stopRecording();
 			},
 		});
 
@@ -425,59 +427,61 @@ export default class AltNotePlugin extends Plugin {
 		this.addCommand({
 			id: 'export-markdown',
 			name: t('command.exportMarkdown'),
-			callback: async () => {
-				const file = this.app.workspace.getActiveFile();
-				if (!file) {
-					new Notice('Open a note first.');
-					return;
-				}
+			callback: () => {
+				void (async () => {
+					const file = this.app.workspace.getActiveFile();
+					if (!file) {
+						new Notice('Open a note first.');
+						return;
+					}
 
-				const content = await this.app.vault.read(file);
-				if (!content.trim()) {
-					new Notice(t('summary.noContent'));
-					return;
-				}
+					const content = await this.app.vault.read(file);
+					if (!content.trim()) {
+						new Notice(t('summary.noContent'));
+						return;
+					}
 
-				await this.ensureLlmAvailable();
+					await this.ensureLlmAvailable();
 
-				let summary = '';
-				let translation = '';
+					let summary = '';
+					let translation = '';
 
-				try {
-					summary = await this.summaryService.summarize(content, {
-						model: this.settings.llmCloudModel,
-						customPrompt: this.settings.customSummaryPrompt || undefined,
-						outputLanguage: this.settings.summaryOutputLanguage || undefined,
-						summaryMode: this.settings.summaryMode,
-					});
-				} catch {
-					summary = '';
-				}
+					try {
+						summary = await this.summaryService.summarize(content, {
+							model: this.settings.llmCloudModel,
+							customPrompt: this.settings.customSummaryPrompt || undefined,
+							outputLanguage: this.settings.summaryOutputLanguage || undefined,
+							summaryMode: this.settings.summaryMode,
+						});
+					} catch {
+						summary = '';
+					}
 
-				try {
-					translation = await this.translationService.translate(content, this.settings.translationTargetLanguage, {
-						model: this.settings.llmExtraModel,
-					});
-				} catch {
-					translation = '';
-				}
+					try {
+						translation = await this.translationService.translate(content, this.settings.translationTargetLanguage, {
+							model: this.settings.llmExtraModel,
+						});
+					} catch {
+						translation = '';
+					}
 
-				const exported = await this.exportService.export(
-					{
-						title: file.basename,
-						transcript: content,
-						summary: summary || undefined,
-						translation: translation || undefined,
-						metadata: {
-							llmModel: this.settings.llmCloudModel,
-							createdAt: new Date().toISOString(),
-							sourceNote: file.path,
+					const exported = await this.exportService.export(
+						{
+							title: file.basename,
+							transcript: content,
+							summary: summary || undefined,
+							translation: translation || undefined,
+							metadata: {
+								llmModel: this.settings.llmCloudModel,
+								createdAt: new Date().toISOString(),
+								sourceNote: file.path,
+							},
 						},
-					},
-					this.settings.exportsFolder,
-				);
+						this.settings.exportsFolder,
+					);
 
-				new Notice(`Exported: ${exported.path}`);
+					new Notice(`Exported: ${exported.path}`);
+				})();
 			},
 		});
 	}
