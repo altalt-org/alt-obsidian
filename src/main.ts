@@ -119,12 +119,13 @@ export default class AltNotePlugin extends Plugin {
 	private async connectAltServer(): Promise<void> {
 		if (!this.altClient) return;
 
-		if (!this.settings.altServerToken) {
-			const discovered = this.altClient.discoverToken();
-			if (discovered) {
-				this.settings.altServerToken = discovered;
-				await this.saveData(this.settings);
-			}
+		// Always prefer the token file — it reflects the current alt server token.
+		// Skipping discovery when a saved token exists caused stale-token 401s,
+		// especially on Windows where the file is the only reliable source.
+		const discovered = this.altClient.discoverToken();
+		if (discovered && discovered !== this.settings.altServerToken) {
+			this.settings.altServerToken = discovered;
+			await this.saveData(this.settings);
 		}
 
 		try {
