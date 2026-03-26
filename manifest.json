@@ -1,7 +1,7 @@
 {
 	"id": "alt",
 	"name": "Alt",
-	"version": "0.1.5",
+	"version": "0.1.6",
 	"minAppVersion": "1.5.0",
 	"description": "Free unlimited transcription and AI note-taking with the Alt desktop app.",
 	"author": "Clap",
