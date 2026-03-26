@@ -128,13 +128,17 @@ export default class AltNotePlugin extends Plugin {
 			this.settings.altServerToken = discovered;
 			await this.saveData(this.settings);
 		}
+		if (!discovered && !this.settings.altServerToken) {
+			console.warn('[Alt] No token available — token file not found and no saved token. Connection will fail auth.');
+		}
 
 		try {
 			await this.altClient.connect();
 			this.altClient.startSSE();
 			this.altRetryCount = 0;
 			void this.refreshModels();
-		} catch {
+		} catch (e) {
+			console.error('[Alt] Connection failed:', e instanceof Error ? e.message : e);
 			this.scheduleAltRetry();
 		}
 	}

@@ -135,11 +135,12 @@ export class AltHttpClient {
 		try {
 			const token = fs.readFileSync(tokenPath, 'utf-8').trim();
 			if (token) {
+				console.log(`[Alt] Token discovered from ${tokenPath} (${token.slice(0, 6)}...)`);
 				this.token = token;
 				return token;
 			}
-		} catch {
-			// Token file not found — user must provide manually
+		} catch (e) {
+			console.warn(`[Alt] Token file not found at ${tokenPath}:`, e instanceof Error ? e.message : e);
 		}
 		return null;
 	}
