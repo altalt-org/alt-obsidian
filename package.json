@@ -1,6 +1,6 @@
 {
 	"name": "alt-obsidian",
-	"version": "0.1.4",
+	"version": "0.1.5",
 	"description": "Free unlimited transcription and AI note-taking for Obsidian",
 	"main": "main.js",
 	"scripts": {
